@@ -1,0 +1,27 @@
+[
+    {
+        "id":"0",
+        "cls": "fwds",
+        "stamp":"2000-01-01T00:00:00+00:00",
+        "add":[],
+        "remove":[]
+    },
+    {   
+        "id":"0",
+        "cls": "cmd",
+        "value": ""
+
+    },
+     {
+        "id":"0",
+        "cls": "links",
+        "value": ""
+
+    },
+     {
+        "id":"0",
+        "cls": "positions",
+        "value": ""
+
+    }
+]

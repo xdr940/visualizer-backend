@@ -12,87 +12,107 @@ import asyncio
 from path import Path
 from utils.tool import json2dict,dict2json,to_csv,read_csv
 
-async def recv_msg(websocket):
-    while True:
-        # recv_text = await websocket.recv()
-        try:
-            first_msg = await websocket.recv()
-            print("from frontend :{}".format(first_msg))
-            if first_msg =="hello":
-                return
-        except:
-            print("little error")
-        # recv_dict = dict(recv_dict)
-        # response_text = f"your submit context: {recv_text}"
+from route.mplf import MPLF
 
 
-s1="00001"
-s2 ="01010"
+src="00001"
+dst ="00109"
 
-def modifyData(dct):
-    ret = str(dct).replace('\'','\"')
-    return ret
+
+
+def cmd(cmd_str):
+    msg_to_frontend = templates[CMD_TEM]
+    msg_to_frontend['value'] =cmd_str
+    msg_to_frontend = str(msg_to_frontend).replace('\'','\"')
+    return msg_to_frontend
+
+
+def make_fwds(fwds_add,fwds_mv=None):
+    msg_to_frontend = templates[FWDS_TEM].copy()
+    msg_to_frontend['add'] = fwds_add
+    msg_to_frontend['remove'] =[]
+    msg_to_frontend = str(msg_to_frontend).replace('\'','\"')
+
+    return msg_to_frontend
+
+
 
 async def main(websocket,path,args):
     # yml = YamlHandler(args.settings)
     # config = yml.read_yaml()
-
-
-    # link to
-    print("listening frontend....")
+    print("Connection established.")
+    print("Listening...")
 
     while True:
         first_msg = await websocket.recv()
         if first_msg == "hello":
             print("hello from frontend")
-            print("connected")
             break
 
 
     # get static status here
+    await websocket.send(cmd("get links"))
+    msg = await websocket.recv()
+    msg = json.loads(msg)
+    fwds_all = msg['value']
+    print(fwds_all)
 
 
 
-    fwds_all=None
+
+
+    routeing = MPLF(fwds_all=fwds_all)
+
+
+
+
     positions=None
     msg_to_frontend=None
+
     while True:
 
         # test
-        cls = input("msg2frontend:")
-        msg_firstto_frontend={}
-        msg_firstto_frontend['cls'] = cls
-        await websocket.send(modifyData(msg_firstto_frontend))
-        print("send firt data:{}".format(msg_firstto_frontend))
-        print("wating msg from frontend...")
-
-        # run
-        # msg_to_frontend = {}
-        # msg_to_frontend['cls'] = "GET current status"
-        # await websocket.send(modifyData(msg_firstto_frontend))
+        cmd_value = input("Sending:")
+        if cmd_value in CMD_LIST:
+            await websocket.send(cmd(cmd_value))
+        else:
+            print("wrong cmd, retry")
+            continue
 
 
+        print("Wating msg from frontend...")
+        time.sleep(2)
 
+
+
+
+        # recv from frontend
         msg_from_frontend = await websocket.recv()
-        print("msg_from_frontend:{}".format(msg_from_frontend)) #test
-        msg = json.loads(msg_from_frontend)
+        # print("recv msg from frontend:{}".format(msg_from_frontend)) #test
+        print("recv msg from frontend.") #test
+        msg_from_frontend = json.loads(msg_from_frontend)
 
 
-        if msg['cls']=='static status':
-            fwds_all = parseStaticStatus(msg)
-            print("static_status loaded")
-        elif msg['cls'] =="current status":
-            positions = parseCurrentStatus(msg)
-            print("current satus loaded")
+        if msg_from_frontend['cls']=='links':
+            fwds_all = msg_from_frontend['value']
+            print("links loaded")
+        elif msg_from_frontend['cls'] =="positions":
+            positions = msg_from_frontend['value']
+            print("positions loaded")
 
-            fwds = caculate_route(static_status=fwds_all,current_status=positions,s1='00205',s2='00307')
-            msg_to_frontend={}
-            msg_to_frontend['cls']="fwds"
-            msg_to_frontend['fwds']=fwds
-            await websocket.send(modifyData(msg_to_frontend))
+            # caculate fwds and send
+            src_dst = input("src,dst:")
+            src1,dst1 = src_dst.split(' ')
+            fwds_add = routeing(positions=positions, src=src1, dst=dst1)
+            print(fwds_add)
             time.sleep(1)
-            print("send fwds ok")
 
+            await websocket.send(make_fwds(fwds_add=fwds_add))
+            print("send fwds ok")
+        elif msg_from_frontend['cls']=="nack":
+            break
+        elif msg_from_frontend['cls']=='ack':
+            continue
 
 
 
@@ -103,14 +123,28 @@ def parseCurrentStatus(msg):
     return  msg["positions"]
 
 def caculate_route(static_status,current_status,s1,s2):
-    dic = json2dict("./example_routes.json")
+    dic = json2dict("./templates.json")
+    #TODO
     return dic[0]
     pass
 
 
+CMD_LIST=[
+    "get links",#例如邻接信息
+    "get positions",# 例如位置
+    "clear fwds"
+]
+# fwds_template =  {
+#         "cls":"fwds",
+#         "id":"0",
+#         "stamp":"2000-01-01T00:00:44+00:00",
+#         "add":None,
+#         "remove":None
+#     }
 
-
-
+templates =  json2dict("./templates.json")
+FWDS_TEM = 0
+CMD_TEM=1
 
 
 if __name__ == "__main__":
