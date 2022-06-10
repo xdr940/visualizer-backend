@@ -1,0 +1,24 @@
+
+
+dump_path: "/home/roit/datasets/cesiumData/36-21-12-15-53-4isl"
+
+start_time: [2000,1,1]
+end_time: [2000,1,2]
+num_ISLs: 4
+constellation:
+
+  name: "lite"
+  num_orbits: 36
+  num_sats_per_orbit: 21
+  phase_factor: 12
+  eccentricity: 0.0000001
+#seed satellite
+satellite:
+  mean_motion_rev_per_day: 15.2202
+  inclination_degree: 53
+  perigee_degree: 268.4266
+  mean_anomaly_degree: 91.5750
+  raan: 0
+
+
+
