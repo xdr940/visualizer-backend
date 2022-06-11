@@ -20,8 +20,7 @@ class MPLF:
             dst = fwd[10:]
             if src not in self.adj_table.keys():
                 self.adj_table[src]=[]
-            else:
-                self.adj_table[src].append(dst)
+            self.adj_table[src].append(dst)
 
         pass
     def restParam(self):
@@ -54,9 +53,11 @@ class MPLF:
             cos_sim = similarity(vec,cmp_vecs)
             current_sat = self.adj_table[current_sat][np.argmax(cos_sim)]
             if len(routes)>2 and current_sat == routes[-2]:
+                routes.pop(-1)
                 print("un-routable")
                 break
             elif current_sat == dst:
+                print("successful route")
                 routes.append(current_sat)
                 break
             if cnt>max_hop :
