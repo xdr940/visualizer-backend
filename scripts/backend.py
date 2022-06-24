@@ -57,34 +57,50 @@ class BackEnd:
         pass
 
 
-        self.time_stamps = [
-            "2000-01-01T00:00:00Z",
+        # self.time_stamps = [
+        #     "2000-01-01T00:00:00Z",
+        #     "2000-01-01T00:15:00Z",
+        #     "2000-01-01T00:30:00Z",
+        #     "2000-01-01T00:45:00Z",
+        #     "2000-01-01T01:00:00Z",
+        #     "2000-01-01T01:15:00Z",
+        #     "2000-01-01T01:30:00Z",
+        #     "2000-01-01T01:45:00Z",
+        #     "2000-01-01T02:00:00Z",
+        #     "2000-01-01T02:15:00Z",
+        #     "2000-01-01T02:30:00Z",
+        #     "2000-01-01T02:45:00Z",
+        #     "2000-01-01T03:00:00Z",
+        #     "2000-01-01T03:15:00Z",
+        #     "2000-01-01T03:30:00Z",
+        #     "2000-01-01T03:45:00Z",
+        #     "2000-01-01T04:00:00Z",
+        #     "2000-01-01T04:15:00Z",
+        #     "2000-01-01T04:30:00Z",
+        #     "2000-01-01T04:45:00Z",
+        #     "2000-01-01T05:00:00Z",
+        #     "2000-01-01T05:15:00Z",
+        #     "2000-01-01T05:30:00Z",
+        #     "2000-01-01T05:45:00Z",
+        #     "2000-01-01T06:00:00Z"
+        #
+        # ]
+        self.time_stamps=[
+            "2000-01-01T00:10:00Z",
+            "2000-01-01T00:11:00Z",
+            "2000-01-01T00:12:00Z",
+            "2000-01-01T00:13:00Z",
+            "2000-01-01T00:14:00Z",
             "2000-01-01T00:15:00Z",
-            "2000-01-01T00:30:00Z",
-            "2000-01-01T00:45:00Z",
-            "2000-01-01T01:00:00Z",
-            "2000-01-01T01:15:00Z",
-            "2000-01-01T01:30:00Z",
-            "2000-01-01T01:45:00Z",
-            "2000-01-01T02:00:00Z",
-            "2000-01-01T02:15:00Z",
-            "2000-01-01T02:30:00Z",
-            "2000-01-01T02:45:00Z",
-            "2000-01-01T03:00:00Z",
-            "2000-01-01T03:15:00Z",
-            "2000-01-01T03:30:00Z",
-            "2000-01-01T03:45:00Z",
-            "2000-01-01T04:00:00Z",
-            "2000-01-01T04:15:00Z",
-            "2000-01-01T04:30:00Z",
-            "2000-01-01T04:45:00Z",
-            "2000-01-01T05:00:00Z",
-            "2000-01-01T05:15:00Z",
-            "2000-01-01T05:30:00Z",
-            "2000-01-01T05:45:00Z",
-            "2000-01-01T06:00:00Z"
+            "2000-01-01T00:16:00Z",
+            "2000-01-01T00:17:00Z",
+            "2000-01-01T00:18:00Z",
+            "2000-01-01T00:19:00Z",
+            "2000-01-01T00:20:00Z"
 
         ]
+
+
 
     async def exp1(self,websocket,routing):
         time_stamps = self.time_stamps
@@ -160,8 +176,8 @@ class BackEnd:
         print("-> exp1 over, save at {}".format(save_dir))
 
     async def exp2(self, websocket, routing):
-        src = 'Harbin'
-        dst = 'Moscow'
+        src_gs = 'Harbin'
+        dst_gs = 'London'
 
         yy = datetime.datetime.now().year
         mm = datetime.datetime.now().month
@@ -176,59 +192,84 @@ class BackEnd:
 
 
         # set time
-        # for time_stamp in tqdm(self.time_stamps):
+        cnt = 0
+        src_sats = []
+        dst_sats = []
+        for time_stamp in tqdm(self.time_stamps):
         #     pass
 
-        cnt = 0
+            # time
+            tmp_cmd0 = {
+                "id": 0,
+                "do": "set",
+                "arg": "time"
+            }
+            tmp_cmd0['value'] = time_stamp
+            await websocket.send(json.dumps(tmp_cmd0))
+            msg0 = await websocket.recv()
 
-        tmp_cmd = {
-        "id": 0,
-        "do": "get",
-        "arg": "gsls"
-        }
-        # tmp_cmd['value'] = time_stamp
 
-        await websocket.send(json.dumps(tmp_cmd))
-        msg = await websocket.recv()
-        msg = json.loads(msg)
-        gsls = msg['data']
-
-        tmp_cmd2 = {
+            # gsl
+            tmp_cmd = {
             "id": 0,
             "do": "get",
-            "arg": "positions"
-        }
-        # tmp_cmd['value'] = time_stamp
-        await websocket.send(json.dumps(tmp_cmd2))
-        msg2 = await websocket.recv()
-        msg2 = json.loads(msg2)
-        positions = msg2['data']
+            "arg": "gsls"
+            }
+
+
+            await websocket.send(json.dumps(tmp_cmd))
+            msg = await websocket.recv()
+            msg = json.loads(msg)
+            gsls = msg['data']
+
+            # positions
+            tmp_cmd2 = {
+                "id": 0,
+                "do": "get",
+                "arg": "positions"
+            }
+            # tmp_cmd['value'] = time_stamp
+            await websocket.send(json.dumps(tmp_cmd2))
+            msg2 = await websocket.recv()
+            msg2 = json.loads(msg2)
+            positions = msg2['data']
 
 
 
-        src_sats=[]
-        dst_sats=[]
-        for gsl in gsls:
-            sat_name = gsl[4:9]
-            gss_name = gsl[10:]
-            if gss_name ==src:
-                src_sats.append(sat_name)
-            elif gss_name == dst:
-                dst_sats.append(sat_name)
-        hited =[]
-        for src in src_sats:
-            for dst in dst_sats:
-                routes, route_positions = routing(positions=positions, src=src, dst=dst)
-                if routes[-1] == dst:
-                    hited.append(routes)
+
+            for gsl in gsls:
+                sat_name = gsl[4:9]
+                gs_name = gsl[10:]
+                if gs_name ==src_gs:
+                    src_sats.append(sat_name)
+                elif gs_name == dst_gs:
+                    dst_sats.append(sat_name)
 
 
-        if len(hited)==0:
-            print("none at {}".format(cnt))
-        else:
-            dict2json(save_dir / '{:02d}_routes.json'.format(cnt), hited)
-            dict2json(save_dir / '{:02d}_positions.json'.format(cnt), positions)
-        cnt+=1
+            print("\nsrcs: {}".format(src_sats))
+            print("dsts: {}".format(dst_sats))
+
+            print('gsls: {}'.format(gsls))
+            hited =[]
+            for src_sat in src_sats:
+                for dst_sat in dst_sats:
+                    routes, route_positions = routing(positions=positions, src=src_sat, dst=dst_sat)
+                    if routes[-1] == dst_sat:
+                        hited.append(routes)
+
+
+            if len(hited)==0:
+                print("none at {}".format(cnt))
+            else:
+                print('hited at {}'.format(cnt))
+                print(hited)
+
+                dict2json(save_dir / '{:02d}_routes.json'.format(cnt), hited)
+                dict2json(save_dir / '{:02d}_positions.json'.format(cnt), positions)
+            src_sats.clear()
+            dst_sats.clear()
+            time.sleep(3)
+            cnt+=1
 
 
     def parse_cmd(self,line):
