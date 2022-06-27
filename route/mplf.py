@@ -45,6 +45,7 @@ class MPLF:
         routes = [src]
         max_hop = 30
         cnt=0
+        route_positions=[]
         while True:
 
             vec = dst_position - current_position
@@ -54,11 +55,12 @@ class MPLF:
             current_sat = self.adj_table[current_sat][np.argmax(cos_sim)]
             if len(routes)>2 and current_sat == routes[-2]:
                 routes.pop(-1)
-                print("un-routable")
+                # print("-> un-routable")
                 break
             elif current_sat == dst:
-                print("successful route")
+                # print("-> successful route")
                 routes.append(current_sat)
+
                 break
             if cnt>max_hop :
                 break
@@ -67,12 +69,7 @@ class MPLF:
             cnt+=1
 
 
-        add_fwds = []
-        i=0
-        j=1
-        while j < len(routes):
-            add_fwds.append("FWD-{}-{}".format(routes[i],routes[j]))
-            j+=1
-            i+=1
 
-        return add_fwds
+        for sat in routes:
+            route_positions.append(positions[sat])
+        return routes,route_positions
