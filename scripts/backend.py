@@ -27,18 +27,28 @@ def cmd(template,arg):
     return  json.dumps(msg_to_frontend)
 
 
-def make_fwds(template,fwds_add,fwds_mv=None,):
-    msg_to_frontend = template.copy()
+def make_fwds(fwds_add,fwds_mv,algorithm=None):
+    msg_to_frontend =   {
+        "id":"1",
+        "do": "post",
+        "arg": "fwds",
+        "value": "post fwds",
+        "stamp":"2000-01-01T00:00:00+00:00",
+        "algorithm":None,
+        "add":[],
+        "remove":[]
+    }
     msg_to_frontend['add'] = fwds_add
-    msg_to_frontend['remove'] =[]
+    msg_to_frontend['remove'] =fwds_mv
+    msg_to_frontend['algorithm'] = algorithm
     return  json.dumps(msg_to_frontend)
 
 def route2fwds(routes):
-    add_fwds = []
+    add_fwds = set()
     i = 0
     j = 1
     while j < len(routes):
-        add_fwds.append("FWD-{}-{}".format(routes[i], routes[j]))
+        add_fwds.add("FWD-{}-{}".format(routes[i], routes[j]))
         j += 1
         i += 1
     return add_fwds
@@ -193,8 +203,11 @@ class BackEnd:
 
         # set time
         cnt = 0
-        src_sats = []
-        dst_sats = []
+        hited_index =[]
+
+        #showing
+        routes_log={}
+        routes_log['mplf'] = []
         for time_stamp in tqdm(self.time_stamps):
         #     pass
 
@@ -234,9 +247,8 @@ class BackEnd:
             msg2 = json.loads(msg2)
             positions = msg2['data']
 
-
-
-
+            src_sats = []
+            dst_sats = []
             for gsl in gsls:
                 sat_name = gsl[4:9]
                 gs_name = gsl[10:]
@@ -249,28 +261,53 @@ class BackEnd:
             print("\nsrcs: {}".format(src_sats))
             print("dsts: {}".format(dst_sats))
 
-            print('gsls: {}'.format(gsls))
+            # print('gsls: {}'.format(gsls))
             hited =[]
             for src_sat in src_sats:
                 for dst_sat in dst_sats:
                     routes, route_positions = routing(positions=positions, src=src_sat, dst=dst_sat)
                     if routes[-1] == dst_sat:
                         hited.append(routes)
+            # send fwds
+            for route in hited:
+                fwds = route2fwds(route)
+
+                routes_log['mplf'].append(fwds)
+
+                if len(routes_log['mplf'])>=2:
+                    last_fwds = routes_log['mplf'][-2]
+                    fwds_add = list(fwds - last_fwds)
+                    fwds_mv = list(last_fwds - fwds)
+                else:
+                    fwds_add = list(fwds)
+                    fwds_mv=[]
 
 
-            if len(hited)==0:
-                print("none at {}".format(cnt))
-            else:
-                print('hited at {}'.format(cnt))
-                print(hited)
+                # print(fwds_add)
+                await websocket.send(make_fwds(fwds_add=fwds_add,fwds_mv = fwds_mv,algorithm='mplf'))
+                rec = await websocket.recv()
+                print("mplf send fwds ok")
+                time.sleep(0.1)
+                break
 
-                dict2json(save_dir / '{:02d}_routes.json'.format(cnt), hited)
-                dict2json(save_dir / '{:02d}_positions.json'.format(cnt), positions)
-            src_sats.clear()
-            dst_sats.clear()
-            time.sleep(3)
-            cnt+=1
-
+        # save
+        #     if len(hited)==0:
+        #         # print("none at {}".format(cnt))
+        #         pass
+        #     else:
+        #         # print('hited at {}'.format(cnt))
+        #         hited_index.append(cnt)
+        #         dict2json(save_dir / '{:02d}_routes.json'.format(cnt), hited)
+        #         dict2json(save_dir / '{:02d}_positions.json'.format(cnt), positions)
+        #     cnt+=1
+        # description = {
+        #     "name": "{}-{}".format(src_gs,dst_gs),
+        #     "time_stamps":self.time_stamps,
+        #     "hited_index":hited_index
+        # }
+        # dict2json(save_dir / 'description.json',description)
+        #
+        # print('-> saved at: {}'.format(save_dir))
 
     def parse_cmd(self,line):
         cmd_packet = {
@@ -331,7 +368,7 @@ class BackEnd:
 
         print("Connection established.")
         print("Listening...")
-
+        routes_log={}
         while True:
             first_msg = await websocket.recv()
             if first_msg == "hello":
@@ -373,15 +410,43 @@ class BackEnd:
                 await self.exp1(websocket,routing)
             elif cmd_str =="exp2":
                 await  self.exp2(websocket,routing)
-            elif cmd_str == "route":
+            elif cmd_str == "mplf":
+                routes_log[cmd_str]=[]
+                # get positions
+                tmp_cmd = {
+                    "id": 0,
+                    "do": "get",
+                    "arg": "positions"
+                }
+                await websocket.send(json.dumps(tmp_cmd))
+                msg = await websocket.recv()
+                msg = json.loads(msg)
+
+                positions = msg['data']
+
+
                 # caculate fwds and send
                 src_dst = input("src,dst:")
-                src1, dst1 = src_dst.split(' ')
-                routes, _ = routing(positions=positions, src=src1, dst=dst1)
-                fwds_add = route2fwds(routes)
+                src_sat, dst_sat = src_dst.split(' ')
+                routes, _ = routing(positions=positions, src=src_sat, dst=dst_sat)
+                fwds = route2fwds(routes)# set
+
+
+
+                routes_log[cmd_str].append(fwds)
+
+                if len(routes_log[cmd_str])>=2:
+                    last_fwds = routes_log[cmd_str][-2]
+                    fwds_add = list(fwds - last_fwds)
+                    fwds_mv = list(last_fwds - fwds)
+                else:
+                    fwds_add = list(fwds)
+                    fwds_mv=[]
+
+
                 # print(fwds_add)
-                await websocket.send(make_fwds(template=self.templates[2], fwds_add=fwds_add))
-                print("send fwds ok")
+                await websocket.send(make_fwds(fwds_add=fwds_add,fwds_mv = fwds_mv,algorithm=cmd_str))
+                print("mplf send fwds ok")
             elif packet:
                 print(packet)
                 await websocket.send(json.dumps(packet))
@@ -424,6 +489,7 @@ class BackEnd:
 
 
 if __name__ == "__main__":
+    from utils.tool import get_stamps
     parser = argparse.ArgumentParser(description="constellation-information")
     if os.path.exists('../configs/config.yaml'):
         parser.add_argument("--settings", default='../configs/config.yaml')
@@ -431,7 +497,9 @@ if __name__ == "__main__":
         parser.add_argument("--settings", default='./configs/config.yaml')
 
     args = parser.parse_args()
+
     backend = BackEnd(args)
+    backend.time_stamps = get_stamps(num=200)
     start_server = websockets.serve(backend.main, "192.168.3.2", 5678)
 
     asyncio.get_event_loop().run_until_complete(start_server)
