@@ -5,7 +5,40 @@ import numpy as np
 import matplotlib.pyplot as plt
 class RouteAnalysis:
     def __init__(self):
-        self.dir = Path("/home/roit/models/mplf/20220623_163501")
+        self.dir = Path("/home/roit/models/mplf/20220628_004404")
+        pass
+    def end2end_route_stat(self,dir_path):
+        dir_path = Path(dir_path)
+        description_p = dir_path/"description.json"
+        description = json2dict(description_p)
+        time_stamps = description['time_stamps']
+        hited_index = description['hited_index']
+
+        position_files = dir_path.files('*_positions.json')
+        route_files = dir_path.files('*_routes.json')
+
+        position_files.sort()
+        route_files.sort()
+        p2p_distance_time = {}
+        for position_file,route_file,index in zip(position_files,route_files,hited_index):
+            p2p_distance = []
+
+
+            position = json2dict(position_file)
+            multi_route = json2dict(route_file)
+            route=multi_route[0]
+            i=0
+            while i +1< len(route):
+                p1 =np.array( position[route[i]])
+                p2 =np.array( position[route[i+1]])
+
+
+                p2p_distance.append(np.linalg.norm(p1- p2))
+                i+=1
+            p2p_distance_time[time_stamps[index]] = p2p_distance
+
+        return p2p_distance_time
+
         pass
     def routable(self,route_file):
         routes = json2dict(route_file)
@@ -52,12 +85,12 @@ class RouteAnalysis:
         return distance_time.mean(axis=1)
 
 
-ps = RouteAnalysis().last_dis()
-ps = list(ps)
-print('[',end=' ')
-for item in ps:
-    print("{:.2f}".format(float(item/1000)),end=', ')
-print(']')
-
-plt.plot(ps)
-plt.show()
+# ps = RouteAnalysis().last_dis()
+# ps = list(ps)
+# print('[',end=' ')
+# for item in ps:
+#     print("{:.2f}".format(float(item/1000)),end=', ')
+# print(']')
+#
+# plt.plot(ps)
+# plt.show()
